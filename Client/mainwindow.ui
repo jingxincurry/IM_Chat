@@ -51,7 +51,7 @@
     <property name="geometry">
      <rect>
       <x>410</x>
-      <y>190</y>
+      <y>200</y>
       <width>69</width>
       <height>19</height>
      </rect>
@@ -77,7 +77,7 @@
     <property name="geometry">
      <rect>
       <x>512</x>
-      <y>60</y>
+      <y>100</y>
       <width>141</width>
       <height>25</height>
      </rect>
@@ -87,7 +87,7 @@
     <property name="geometry">
      <rect>
       <x>512</x>
-      <y>100</y>
+      <y>140</y>
       <width>141</width>
       <height>21</height>
      </rect>
@@ -97,7 +97,7 @@
     <property name="geometry">
      <rect>
       <x>430</x>
-      <y>130</y>
+      <y>170</y>
       <width>93</width>
       <height>28</height>
      </rect>
@@ -110,7 +110,7 @@
     <property name="geometry">
      <rect>
       <x>560</x>
-      <y>130</y>
+      <y>170</y>
       <width>93</width>
       <height>28</height>
      </rect>
@@ -123,7 +123,7 @@
     <property name="geometry">
      <rect>
       <x>410</x>
-      <y>210</y>
+      <y>220</y>
       <width>271</width>
       <height>321</height>
      </rect>
@@ -143,7 +143,7 @@
     <property name="geometry">
      <rect>
       <x>430</x>
-      <y>60</y>
+      <y>100</y>
       <width>69</width>
       <height>19</height>
      </rect>
@@ -156,7 +156,7 @@
     <property name="geometry">
      <rect>
       <x>430</x>
-      <y>100</y>
+      <y>140</y>
       <width>69</width>
       <height>19</height>
      </rect>
@@ -240,6 +240,76 @@
      <string>系统提示栏</string>
     </property>
    </widget>
+   <widget class="QLineEdit" name="lineEditIp">
+    <property name="geometry">
+     <rect>
+      <x>460</x>
+      <y>60</y>
+      <width>121</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignmentFlag::AlignCenter</set>
+    </property>
+    <property name="placeholderText">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_6">
+    <property name="geometry">
+     <rect>
+      <x>430</x>
+      <y>60</y>
+      <width>21</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>IP:</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>580</x>
+      <y>60</y>
+      <width>31</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Port:</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="spinBoxPort">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>60</y>
+      <width>42</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignmentFlag::AlignCenter</set>
+    </property>
+    <property name="buttonSymbols">
+     <enum>QAbstractSpinBox::ButtonSymbols::NoButtons</enum>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+    <property name="maximum">
+     <number>65535</number>
+    </property>
+    <property name="value">
+     <number>8888</number>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -247,7 +317,7 @@
      <x>0</x>
      <y>0</y>
      <width>925</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

@@ -46,12 +46,12 @@ public:
     {
     }
 
-    Word command() const  //返回数据包的命令类型
+    Word command() const
     {
         return m_cmd;
     }
 
-    const std::string &payload() const  //返回数据包的负载内容
+    const std::string &payload() const
     {
         return m_payload;
     }
@@ -70,7 +70,7 @@ public:
         return out;
     }
 
-    static bool tryParse(std::string &buffer, Packet &packet) //数据包协议
+    static bool tryParse(std::string &buffer, Packet &packet)
     {
         size_t pos = 0;
         while (pos + 1 < buffer.size()) {
@@ -113,42 +113,40 @@ public:
         return true;
     }
 
-    static void appendWord(std::string &out, Word value) 
-    {   //value = 0x1234  out = 0x34 0x12
-        //一个 Word(2字节) 写入 out字符串，低字节在前，高字节在后
+    static void appendWord(std::string &out, Word value)
+    {
         out.push_back(static_cast<char>(value & 0xFF));
         out.push_back(static_cast<char>((value >> 8) & 0xFF));
     }
 
-    static void appendDWord(std::string &out, DWord value) //一个 DWord（4字节） 写入 out字符串，低字节在前，高字节在后
-    {   //value = 0x12345678  out = 0x78 0x56 0x34 0x12
+    static void appendDWord(std::string &out, DWord value)
+    {
         for (int i = 0; i < 4; ++i) {
             out.push_back(static_cast<char>((value >> (i * 8)) & 0xFF));
         }
     }
 
-    static void appendQWord(std::string &out, QWord value) //一个 QWord（8字节） 写入 out字符串，低字节在前，高字节在后
-    {   //value = 0x1234567890ABCDEF  out = 0xEF 0xCD 0xAB 0x90 0x78 0x56 0x34 0x12
+    static void appendQWord(std::string &out, QWord value)
+    {
         for (int i = 0; i < 8; ++i) {
             out.push_back(static_cast<char>((value >> (i * 8)) & 0xFF));
         }
     }
 
     static void appendString(std::string &out, const std::string &value)
-    {   // 写入字符串，先写入字符串长度（4字节），再写入字符串内容
+    {
         appendDWord(out, static_cast<DWord>(value.size()));
         out += value;
     }
 
     static Word readWord(const char *data)
-    {   //从 data字符串中读取一个 Word（2字节），低字节在前，高字节在后
+    {
         return static_cast<Word>(static_cast<Byte>(data[0]))
             | (static_cast<Word>(static_cast<Byte>(data[1])) << 8);
     }
 
     static DWord readDWord(const char *data)
-    {   //从 data字符串中读取一个 DWord（4字节），低字节在前，高字节在后
-        //读length = 0x12345678  data = 0x78 0x56 0x34 0x12
+    {
         DWord value = 0;
         for (int i = 0; i < 4; ++i) {
             value |= static_cast<DWord>(static_cast<Byte>(data[i])) << (i * 8);
@@ -157,7 +155,7 @@ public:
     }
 
     static QWord readQWord(const char *data)
-    {   //从 data字符串中读取一个 QWord（8字节），低字节在前，高字节在后
+    {
         QWord value = 0;
         for (int i = 0; i < 8; ++i) {
             value |= static_cast<QWord>(static_cast<Byte>(data[i])) << (i * 8);
@@ -166,7 +164,7 @@ public:
     }
 
     static bool readString(const std::string &data, size_t &offset, std::string &value)
-    {   //从 data字符串中读取一个字符串，先读取字符串长度（4字节），再读取字符串内容
+    {
         if (offset + 4 > data.size()) {
             return false;
         }
@@ -184,7 +182,7 @@ public:
 
 private:
     static Word checksum(const std::string &payload)
-    {   //计算 payload字符串的校验和，简单地将所有字符的 ASCII值相加，结果取 Word类型
+    {
         Word sum = 0;
         for (char ch : payload) {
             sum = static_cast<Word>(sum + static_cast<Byte>(ch));
@@ -198,12 +196,7 @@ private:
 };
 
 inline std::string makeStringPayload(const std::string &text)
-{   
-    /*
-    字符串长度 4字节 + 字符串内容
-    example:
-    text = "Hello"  payload = [0x05 0x00 0x00 0x00 'H' 'e' 'l' 'l' 'o']
-    */
+{
     std::string payload;
     Packet::appendString(payload, text);
     return payload;
@@ -211,20 +204,12 @@ inline std::string makeStringPayload(const std::string &text)
 
 inline bool parseStringPayload(const std::string &payload, std::string &text)
 {
-    /*
-    从 payload字符串中解析出一个字符串
-    example: payload = [0x05 0x00 0x00 0x00 'H' 'e' 'l' 'l' 'o']  text = "Hello"
-    */
     size_t offset = 0;
     return Packet::readString(payload, offset, text) && offset == payload.size();
 }
 
 inline std::string makeChatPayload(const std::string &sender, const std::string &message)
 {
-    /*
-    创建一个聊天数据包的负载内容
-    example: sender = "Alice"  message = "Hello, Bob!"  payload = [0x05 0x00 0x00 0x00 'A' 'l' 'i' 'c' 'e' 0x0D 0x00 0x00 0x00 'H' 'e' 'l' 'l' 'o' ',' ' ' 'B' 'o' 'b' '!']
-    */
     std::string payload;
     Packet::appendString(payload, sender);
     Packet::appendString(payload, message);
@@ -233,10 +218,6 @@ inline std::string makeChatPayload(const std::string &sender, const std::string 
 
 inline bool parseChatPayload(const std::string &payload, std::string &sender, std::string &message)
 {
-    /*
-    从 payload字符串中解析出发送者和消息内容
-    example: payload = [0x05 0x00 0x00 0x00 'A' 'l' 'i' 'c' 'e' 0x0D 0x00 0x00 0x00 'H' 'e' 'l' 'l' 'o' ',' ' ' 'B' 'o' 'b' '!']  sender = "Alice"  message = "Hello, Bob!"
-    */
     size_t offset = 0;
     return Packet::readString(payload, offset, sender)
         && Packet::readString(payload, offset, message)
@@ -245,13 +226,9 @@ inline bool parseChatPayload(const std::string &payload, std::string &sender, st
 
 inline std::string makeStringListPayload(const std::vector<std::string> &items)
 {
-    /*
-    创建一个字符串列表数据包的负载内容
-    example: items = ["Hello", "World"]  payload = [0x02 0x00 0x00 0x00 'H' 'e' 'l' 'l' 'o' 0x05 0x00 0x00 0x00 'W' 'o' 'r' 'l' 'd']
-    */
     std::string payload;
     Packet::appendDWord(payload, static_cast<DWord>(items.size()));
-    for (const std::string &item : items) { 
+    for (const std::string &item : items) {
         Packet::appendString(payload, item);
     }
     return payload;
@@ -259,10 +236,6 @@ inline std::string makeStringListPayload(const std::vector<std::string> &items)
 
 inline bool parseStringListPayload(const std::string &payload, std::vector<std::string> &items)
 {
-    /*
-    从 payload字符串中解析出一个字符串列表
-    example: payload = [0x02 0x00 0x00 0x00 'H' 'e' 'l' 'l' 'o' 0x05 0x00 0x00 0x00 'W' 'o' 'r' 'l' 'd']  items = ["Hello", "World"]
-    */
     items.clear();
     size_t offset = 0;
     if (payload.size() < 4) {
@@ -283,10 +256,6 @@ inline bool parseStringListPayload(const std::string &payload, std::vector<std::
 
 inline std::string makeFileBeginPayload(const std::string &fileName, QWord fileSize)
 {
-    /*
-    创建一个文件开始数据包的负载内容
-    example: fileName = "test.txt"  fileSize = 1024  payload = [0x08 0x00 0x00 0x00 't' 'e' 's' 't' '.' 't' 'x' 't' 0x00 0x04 0x00 0x00 0x00 0x00 0x00]
-    */
     std::string payload;
     Packet::appendString(payload, fileName);
     Packet::appendQWord(payload, fileSize);
@@ -295,10 +264,6 @@ inline std::string makeFileBeginPayload(const std::string &fileName, QWord fileS
 
 inline bool parseFileBeginPayload(const std::string &payload, std::string &fileName, QWord &fileSize)
 {
-    /*
-    从 payload字符串中解析出文件名和文件大小
-    example: payload = [0x08 0x00 0x00 0x00 't' 'e' 's' 't' '.' 't' 'x' 't' 0x00 0x04 0x00 0x00 0x00 0x00 0x00]  fileName = "test.txt"  fileSize = 1024
-    */
     size_t offset = 0;
     if (!Packet::readString(payload, offset, fileName)) {
         return false;

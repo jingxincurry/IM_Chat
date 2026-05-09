@@ -150,11 +150,12 @@ void ChatServer::handleNewConnections()
 void ChatServer::handleClientEvent(int clientFd, unsigned int events)
 {
     if ((events & EPOLLRDHUP) != 0U || (events & EPOLLHUP) != 0U) {
+        //客户端断开连接，关闭客户端
         closeClient(clientFd);
         return;
     }
 
-    char temp[kBufferSize];
+    char temp[kBufferSize];  //临时缓冲区，用于接收数据
     while (true) {
         const ssize_t bytesRead = recv(clientFd, temp, sizeof(temp), 0);
         if (bytesRead > 0) {
@@ -433,11 +434,12 @@ void ChatServer::sendUserList() const
 
 void ChatServer::sendFileList(int clientFd) const
 {
+    //发送文件列表给指定客户端
     sendPacket(clientFd, Protocol::CmdFileList, Protocol::makeStringListPayload(m_fileService.listFiles()));
 }
 
 void ChatServer::broadcastFileList() const
-{
+{   //向所有客户端广播文件列表更新
     broadcastPacket(Protocol::CmdFileList, Protocol::makeStringListPayload(m_fileService.listFiles()));
 }
 

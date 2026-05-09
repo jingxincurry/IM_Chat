@@ -5,7 +5,7 @@ project(im_server VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(im_server
+add_executable(im_server_reactor
     src/Reactor.cpp
     src/ReactorImplementation.cpp
     src/EpollDemultiplexer.cpp
@@ -17,4 +17,4 @@ add_executable(im_server
     main.cpp
 )
 
-target_include_directories(im_server PRIVATE include)
+target_include_directories(im_server_reactor PRIVATE include)

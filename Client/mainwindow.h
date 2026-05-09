@@ -1,10 +1,11 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "../Server/protocol.h"
+#include "protocol.h"
 
 #include <QFile>
 #include <QMainWindow>
+#include <QString>
 #include <cstdint>
 
 class QTcpSocket;
@@ -46,6 +47,8 @@ private:
     void processPacket(const Protocol::Packet &packet);
     bool ensureLoggedIn();
     void closeTransferFiles();
+    QString serverHost() const;
+    quint16 serverPort() const;
 
     Ui::MainWindow *ui;
     QTcpSocket *m_socket;

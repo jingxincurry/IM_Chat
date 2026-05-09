@@ -2,16 +2,22 @@
 #include "./ui_mainwindow.h"
 
 #include <QDateTime>
+#include <QDebug>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QLineEdit>
 #include <QListWidgetItem>
+#include <QProcessEnvironment>
 #include <QTextCursor>
 #include <QTcpSocket>
 
 namespace {
 
 constexpr qint64 kFileChunkSize = 4096;
+constexpr quint16 kDefaultServerPort = 8888;
+const char *kDefaultServerHost = "123.207.62.1";
+const char *kServerHostEnv = "IM_CHAT_SERVER_HOST";
+const char *kServerPortEnv = "IM_CHAT_SERVER_PORT";
 
 std::string toStdString(const QString &text)
 {
@@ -39,7 +45,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_socket, &QTcpSocket::errorOccurred, this, &MainWindow::onSocketError);
 
     ui->lineEdit_password->setEchoMode(QLineEdit::Password);
-    appendSystemLine(QString::fromUtf8("提示：先连接服务器，再登录。"));
+    ui->lineEditIp->setText(serverHost());
+    ui->spinBoxPort->setValue(static_cast<int>(serverPort()));
+    appendSystemLine(QStringLiteral("Client ready. Connect to a server first."));
     updateButtonStates();
 }
 
@@ -62,7 +70,7 @@ void MainWindow::on_btn_sendMsg_clicked()
 
     const QString content = ui->textEdit_input->toPlainText().trimmed();
     if (content.isEmpty()) {
-        appendSystemLine(QString::fromUtf8("提示：消息不能为空。"));
+        appendSystemLine(QStringLiteral("Message is empty."));
         return;
     }
 
@@ -70,23 +78,23 @@ void MainWindow::on_btn_sendMsg_clicked()
     ui->textEdit_input->clear();
 }
 
-void MainWindow::on_btn_login_clicked() //登录
+void MainWindow::on_btn_login_clicked()
 {
     const QString username = ui->lineEdit_username->text().trimmed();
     if (username.isEmpty()) {
-        appendSystemLine(QString::fromUtf8("提示：用户名不能为空。"));
+        appendSystemLine(QStringLiteral("Username is required."));
         return;
     }
 
     if (m_socket->state() != QAbstractSocket::ConnectedState) {
-        appendSystemLine(QString::fromUtf8("提示：请先连接服务器。"));
+        appendSystemLine(QStringLiteral("Connect to the server before login."));
         return;
     }
 
     sendPacket(Protocol::CmdLogin, Protocol::makeStringPayload(toStdString(username)));
 }
 
-void MainWindow::on_btn_register_clicked()  //注册
+void MainWindow::on_btn_register_clicked()
 {
     on_btn_login_clicked();
 }
@@ -97,14 +105,14 @@ void MainWindow::on_btn_sendFile_clicked()
         return;
     }
 
-    const QString filePath = QFileDialog::getOpenFileName(this, QString::fromUtf8("选择要上传的文件"));
+    const QString filePath = QFileDialog::getOpenFileName(this, QStringLiteral("Select file"));
     if (filePath.isEmpty()) {
         return;
     }
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
-        appendSystemLine(QString::fromUtf8("错误：无法打开文件。"));
+        appendSystemLine(QStringLiteral("Failed to open the file."));
         return;
     }
 
@@ -117,7 +125,7 @@ void MainWindow::on_btn_sendFile_clicked()
     while (!file.atEnd()) {
         const QByteArray chunk = file.read(kFileChunkSize);
         if (chunk.isEmpty() && file.error() != QFile::NoError) {
-            appendSystemLine(QString::fromUtf8("错误：读取文件失败。"));
+            appendSystemLine(QStringLiteral("Failed to read the file."));
             file.close();
             return;
         }
@@ -128,7 +136,7 @@ void MainWindow::on_btn_sendFile_clicked()
 
     file.close();
     sendPacket(Protocol::CmdFileUploadEnd, std::string());
-    appendSystemLine(QString::fromUtf8("系统：已发送上传请求：") + fileName);
+    appendSystemLine(QStringLiteral("Upload completed: ") + fileName);
 }
 
 void MainWindow::on_btn_downloadFile_clicked()
@@ -139,12 +147,12 @@ void MainWindow::on_btn_downloadFile_clicked()
 
     QListWidgetItem *item = ui->listWidget_files->currentItem();
     if (item == nullptr) {
-        appendSystemLine(QString::fromUtf8("提示：请先选择要下载的文件。"));
+        appendSystemLine(QStringLiteral("Select a file to download."));
         return;
     }
 
     const QString fileName = item->text();
-    const QString savePath = QFileDialog::getSaveFileName(this, QString::fromUtf8("保存文件"), fileName);
+    const QString savePath = QFileDialog::getSaveFileName(this, QStringLiteral("Save file"), fileName);
     if (savePath.isEmpty()) {
         return;
     }
@@ -152,7 +160,7 @@ void MainWindow::on_btn_downloadFile_clicked()
     closeTransferFiles();
     m_downloadFile.setFileName(savePath);
     if (!m_downloadFile.open(QIODevice::WriteOnly)) {
-        appendSystemLine(QString::fromUtf8("错误：无法创建本地文件。"));
+        appendSystemLine(QStringLiteral("Failed to create the local file."));
         return;
     }
 
@@ -160,30 +168,32 @@ void MainWindow::on_btn_downloadFile_clicked()
     m_downloadSize = 0;
     m_downloadReceived = 0;
     sendPacket(Protocol::CmdFileDownloadRequest, Protocol::makeStringPayload(toStdString(fileName)));
-    appendSystemLine(QString::fromUtf8("系统：开始下载文件：") + fileName);
+    appendSystemLine(QStringLiteral("Downloading: ") + fileName);
 }
 
-void MainWindow::on_btn_connectServer_clicked()  //连接服务器按钮
+void MainWindow::on_btn_connectServer_clicked()
 {
     if (m_socket->state() == QAbstractSocket::ConnectedState) {
-        appendSystemLine(QString::fromUtf8("提示：已经连接到服务器。"));
+        appendSystemLine(QStringLiteral("Already connected."));
         return;
     }
 
-    appendSystemLine(QString::fromUtf8("正在连接 123.207.62.1:8888 ..."));
-    m_socket->connectToHost("123.207.62.1", 8888);
+    const QString host = serverHost();
+    const quint16 port = serverPort();
+    appendSystemLine(QString("Connecting to %1:%2 ...").arg(host).arg(port));
+    m_socket->connectToHost(host, port);
     updateButtonStates();
 }
 
 void MainWindow::onConnected()
 {
-    appendSystemLine(QString::fromUtf8("系统：服务器连接成功。"));
+    appendSystemLine(QStringLiteral("Connected to server."));
     updateButtonStates();
 }
 
 void MainWindow::onDisconnected()
 {
-    appendSystemLine(QString::fromUtf8("系统：与服务器断开连接。"));
+    appendSystemLine(QStringLiteral("Disconnected from server."));
     m_buffer.clear();
     m_username.clear();
     ui->listWidget_users->clear();
@@ -210,7 +220,7 @@ void MainWindow::onReadyRead()
 
 void MainWindow::onSocketError()
 {
-    appendSystemLine(QString::fromUtf8("错误：") + m_socket->errorString());
+    appendSystemLine(QStringLiteral("Socket error: ") + m_socket->errorString());
     updateButtonStates();
 }
 
@@ -293,7 +303,7 @@ void MainWindow::processPacket(const Protocol::Packet &packet)
         std::string username;
         if (Protocol::parseStringPayload(packet.payload(), username)) {
             m_username = fromStdString(username);
-            appendSystemLine(QString::fromUtf8("系统：当前登录用户：") + m_username);
+            appendSystemLine(QStringLiteral("Logged in as ") + m_username);
             updateButtonStates();
         }
         break;
@@ -351,9 +361,9 @@ void MainWindow::processPacket(const Protocol::Packet &packet)
         }
 
         if (m_downloadSize == 0 || m_downloadReceived == m_downloadSize) {
-            appendSystemLine(QString::fromUtf8("系统：文件下载完成：") + fromStdString(fileName));
+            appendSystemLine(QStringLiteral("Download completed: ") + fromStdString(fileName));
         } else {
-            appendSystemLine(QString::fromUtf8("错误：文件下载不完整。"));
+            appendSystemLine(QStringLiteral("Download incomplete."));
         }
 
         m_downloadFileName.clear();
@@ -367,12 +377,12 @@ void MainWindow::processPacket(const Protocol::Packet &packet)
             if (m_downloadFile.isOpen()) {
                 closeTransferFiles();
             }
-            appendSystemLine(QString::fromUtf8("错误：") + fromStdString(text));
+            appendSystemLine(QStringLiteral("Server error: ") + fromStdString(text));
         }
         break;
     }
     default:
-        appendSystemLine(QString::fromUtf8("系统：收到未知数据包。"));
+        appendSystemLine(QStringLiteral("Unknown packet received."));
         break;
     }
 }
@@ -380,12 +390,12 @@ void MainWindow::processPacket(const Protocol::Packet &packet)
 bool MainWindow::ensureLoggedIn()
 {
     if (m_socket->state() != QAbstractSocket::ConnectedState) {
-        appendSystemLine(QString::fromUtf8("提示：当前未连接服务器。"));
+        appendSystemLine(QStringLiteral("Not connected to server."));
         return false;
     }
 
     if (m_username.isEmpty()) {
-        appendSystemLine(QString::fromUtf8("提示：请先登录。"));
+        appendSystemLine(QStringLiteral("Please login first."));
         return false;
     }
 
@@ -405,4 +415,35 @@ void MainWindow::closeTransferFiles()
     m_downloadFileName.clear();
     m_downloadSize = 0;
     m_downloadReceived = 0;
+}
+
+QString MainWindow::serverHost() const
+{
+    const QString uiHost = ui->lineEditIp->text().trimmed();
+    if (!uiHost.isEmpty()) {
+        return uiHost;
+    }
+
+    const QString envHost = QProcessEnvironment::systemEnvironment().value(kServerHostEnv).trimmed();
+    return envHost.isEmpty() ? QString::fromLatin1(kDefaultServerHost) : envHost;
+}
+
+quint16 MainWindow::serverPort() const
+{
+    const int uiPort = ui->spinBoxPort->value();
+    if (uiPort > 0 && uiPort <= 65535) {
+        return static_cast<quint16>(uiPort);
+    }
+
+    bool ok = false;
+    const QString portText = QProcessEnvironment::systemEnvironment().value(kServerPortEnv).trimmed();
+    const int port = portText.toInt(&ok);
+    if (!ok || port <= 0 || port > 65535) {
+        if (!portText.isEmpty()) {
+            qWarning() << "Invalid" << kServerPortEnv << "value:" << portText;
+        }
+        return kDefaultServerPort;
+    }
+
+    return static_cast<quint16>(port);
 }
