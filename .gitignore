@@ -43,11 +43,8 @@ CMakeLists.txt.user*
 *.app
 
 # IDE and editor local files
-.vscode/*
-!.vscode/*.example.json
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
+# 忽略 VS Code 的本地配置目录（整个目录均忽略）
+.vscode/
 *.swp
 *.swo
 
