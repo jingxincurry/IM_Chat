@@ -92,32 +92,62 @@ ChatServer::~ChatServer()
 
 bool ChatServer::start()
 {
+    /*
+        * 启动服务器：
+        * - 确保上传目录存在
+        * - 初始化监听套接字
+        * - 初始化 Reactor
+    */
     return m_fileService.ensureUploadDir() && initListenSocket() && initReactor();
 }
 
 void ChatServer::run()
 {
+    /*
+        * 运行服务器：
+        * - 输出监听端口信息
+        * - 启动 Reactor 事件循环
+    */
     std::cout << "Chat server listening on port " << m_port << std::endl;
     Reactor::get_instance().event_loop();
 }
 
 void ChatServer::onAcceptReady()
 {
+    /*
+        * 处理接受就绪事件：
+        * - 处理新的连接请求
+    */
     handleNewConnections();
 }
 
 void ChatServer::onClientReadable(int clientFd)
 {
+    /*
+        * 处理客户端可读事件：
+        * - 接收客户端发送的数据
+    */
     handleClientEvent(clientFd);
 }
 
 void ChatServer::onClientClosed(int clientFd)
 {
+    /*
+        * 处理客户端关闭事件：
+        * - 清理客户端资源
+    */
     closeClient(clientFd);
 }
 
 bool ChatServer::initListenSocket()
 {
+    /*
+        * 初始化监听套接字：
+        * - 创建套接字
+        * - 设置套接字选项
+        * - 绑定地址和端口
+        * - 开始监听
+    */
     m_listenFd = socket(AF_INET, SOCK_STREAM, 0);
     if (m_listenFd == -1) {
         return false;
@@ -143,6 +173,11 @@ bool ChatServer::initListenSocket()
 
 bool ChatServer::initReactor()
 {
+    /*
+        * 初始化 Reactor：
+        * - 创建监听事件处理器
+        * - 注册监听套接字到 Reactor
+    */
     m_listenHandler = std::make_unique<ChatListenHandler>(this, m_listenFd);
     Reactor::get_instance().register_handler(m_listenFd,
                                              m_listenHandler.get(),
@@ -152,6 +187,7 @@ bool ChatServer::initReactor()
 
 bool ChatServer::setNonBlocking(int fd) const
 {
+    //设置文件描述符为非阻塞模式
     const int flags = fcntl(fd, F_GETFL, 0);
     if (flags == -1) {
         return false;
@@ -161,6 +197,11 @@ bool ChatServer::setNonBlocking(int fd) const
 
 bool ChatServer::registerClient(int clientFd)
 {
+    /*
+        * 注册客户端：
+        * - 创建客户端事件处理器
+        * - 注册客户端套接字到 Reactor
+    */
     auto handler = std::make_unique<ChatClientHandler>(this, clientFd);
     Reactor::get_instance().register_handler(clientFd,
                                              handler.get(),
@@ -171,6 +212,11 @@ bool ChatServer::registerClient(int clientFd)
 
 void ChatServer::handleNewConnections()
 {
+    /*
+        * 处理新的连接请求：
+        * - 接受新的连接
+        * - 为新连接创建事件处理器
+    */
     while (true) {
         sockaddr_in clientAddress {};
         socklen_t clientLength = sizeof(clientAddress);
@@ -196,12 +242,16 @@ void ChatServer::handleNewConnections()
 
         m_clients[clientFd] = ClientSession {};
         sendSystemMessage(clientFd, "Connected. Please login first.");
-        sendFileList(clientFd);
+        sendFileList(clientFd);  // 连接后先发送文件列表
     }
 }
 
 void ChatServer::handleClientEvent(int clientFd)
 {
+    /*
+        * 处理客户端可读事件：
+        * - 接收客户端发送的数据
+    */
     char temp[kBufferSize];
     while (true) {
         const ssize_t bytesRead = recv(clientFd, temp, sizeof(temp), 0);
@@ -242,6 +292,10 @@ void ChatServer::handleClientEvent(int clientFd)
 
 void ChatServer::handlePacket(int clientFd, const Protocol::Packet &packet)
 {
+    /*
+        * 处理客户端发送的包：
+        * - 根据命令类型调用相应的处理函数
+    */
     switch (packet.command()) {
     case Protocol::CmdLogin:
         handleLogin(clientFd, packet.payload());
@@ -269,6 +323,13 @@ void ChatServer::handlePacket(int clientFd, const Protocol::Packet &packet)
 
 void ChatServer::handleLogin(int clientFd, const std::string &payload)
 {
+    /*
+        * 处理登录请求：
+        * - 解析用户名
+        * - 验证用户名合法性
+        * - 更新客户端会话状态
+        * - 广播登录消息和更新用户列表
+    */
     std::string username;
     if (!Protocol::parseStringPayload(payload, username)) {
         sendError(clientFd, "Invalid login packet.");
@@ -300,6 +361,12 @@ void ChatServer::handleLogin(int clientFd, const std::string &payload)
 
 void ChatServer::handleChatMessage(int clientFd, const std::string &payload)
 {
+    /*
+        * 处理聊天消息：
+        * - 验证用户登录状态
+        * - 解析消息内容
+        * - 广播聊天消息
+    */
     auto &session = m_clients[clientFd];
     if (session.username.empty()) {
         sendError(clientFd, "Please login first.");
@@ -317,6 +384,12 @@ void ChatServer::handleChatMessage(int clientFd, const std::string &payload)
 
 void ChatServer::handleUploadBegin(int clientFd, const std::string &payload)
 {
+    /*
+        * 处理文件上传开始请求：
+        * - 验证用户登录状态
+        * - 解析文件信息
+        * - 初始化上传状态
+    */
     auto &session = m_clients[clientFd];
     if (session.username.empty()) {
         sendError(clientFd, "Please login before upload.");
@@ -335,6 +408,21 @@ void ChatServer::handleUploadBegin(int clientFd, const std::string &payload)
 
 void ChatServer::handleUploadChunk(int clientFd, const std::string &payload)
 {
+    /*
+        * 处理文件上传数据块：
+        * - 验证上传状态
+        * - 写入数据块到文件
+    */
+     auto &session = m_clients[clientFd];
+     if (session.username.empty()) {
+         sendError(clientFd, "Please login before upload.");
+         return;
+     }
+
+     std::string error;
+     if (!m_fileService.writeChunk(session.upload, payload, error)) {
+         sendError(clientFd, error);
+     }
     std::string error;
     if (!m_fileService.writeChunk(m_clients[clientFd].upload, payload, error)) {
         sendError(clientFd, error);
@@ -343,6 +431,12 @@ void ChatServer::handleUploadChunk(int clientFd, const std::string &payload)
 
 void ChatServer::handleUploadEnd(int clientFd)
 {
+    /*
+        * 处理文件上传结束请求：
+        * - 验证上传状态
+        * - 完成上传并验证文件完整性
+        * - 广播上传完成消息和更新文件列表
+    */
     auto &session = m_clients[clientFd];
     std::string fileName;
     std::string error;
@@ -360,6 +454,12 @@ void ChatServer::handleUploadEnd(int clientFd)
 
 void ChatServer::handleDownloadRequest(int clientFd, const std::string &payload)
 {
+    /*
+        * 处理文件下载请求：
+        * - 验证用户登录状态
+        * - 解析下载请求
+        * - 发送文件数据块
+    */
     auto &session = m_clients[clientFd];
     if (session.username.empty()) {
         sendError(clientFd, "Please login before download.");
@@ -403,6 +503,11 @@ void ChatServer::handleDownloadRequest(int clientFd, const std::string &payload)
 
 void ChatServer::closeClient(int clientFd)
 {
+    /*
+        * 处理客户端关闭事件：
+        * - 清理客户端资源
+        * - 广播用户离开消息和更新用户列表
+    */
     auto it = m_clients.find(clientFd);
     if (it == m_clients.end()) {
         return;
@@ -427,6 +532,11 @@ void ChatServer::closeClient(int clientFd)
 
 void ChatServer::sendPacket(int clientFd, std::uint16_t cmd, const std::string &payload) const
 {
+    /*
+        * 发送数据包到客户端：
+        * - 构造数据包
+        * - 发送数据包
+    */
     const std::string data = Protocol::Packet(cmd, payload).serialize();
     const char *ptr = data.data();
     std::size_t left = data.size();
@@ -450,16 +560,31 @@ void ChatServer::sendPacket(int clientFd, std::uint16_t cmd, const std::string &
 
 void ChatServer::sendSystemMessage(int clientFd, const std::string &message) const
 {
+    /*
+        * 发送系统消息到客户端：
+        * - 构造系统消息数据包
+        * - 发送数据包
+    */
     sendPacket(clientFd, Protocol::CmdSystemMessage, Protocol::makeStringPayload(message));
 }
 
 void ChatServer::sendError(int clientFd, const std::string &message) const
 {
+    /*
+        * 发送错误消息到客户端：
+        * - 构造错误消息数据包
+        * - 发送数据包
+    */
     sendPacket(clientFd, Protocol::CmdError, Protocol::makeStringPayload(message));
 }
 
 void ChatServer::broadcastPacket(std::uint16_t cmd, const std::string &payload, int excludeFd) const
 {
+    /*
+        * 广播数据包到所有客户端：
+        * - 构造数据包
+        * - 发送数据包到所有客户端（可选地排除某个客户端）
+    */
     for (const auto &[fd, session] : m_clients) {
         (void)session;
         if (fd != excludeFd) {
@@ -470,6 +595,11 @@ void ChatServer::broadcastPacket(std::uint16_t cmd, const std::string &payload, 
 
 void ChatServer::sendUserList() const
 {
+    /*
+        * 发送用户列表到所有客户端：
+        * - 构造用户列表数据包
+        * - 广播用户列表数据包
+    */
     std::vector<std::string> users;
     for (const auto &[fd, session] : m_clients) {
         (void)fd;
@@ -482,6 +612,11 @@ void ChatServer::sendUserList() const
 
 void ChatServer::sendFileList(int clientFd) const
 {
+    /*
+        * 发送文件列表到指定客户端：
+        * - 构造文件列表数据包
+        * - 发送数据包到客户端
+    */
     sendPacket(clientFd, Protocol::CmdFileList, Protocol::makeStringListPayload(m_fileService.listFiles()));
 }
 
@@ -502,6 +637,11 @@ bool ChatServer::usernameExists(const std::string &username, int excludeFd) cons
 
 void ChatServer::cleanup()
 {
+    /*
+        * 清理服务器资源：
+        * - 关闭所有客户端连接
+        * - 关闭监听套接字
+    */
     for (auto &[fd, session] : m_clients) {
         if (session.upload.file.is_open()) {
             session.upload.file.close();

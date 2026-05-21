@@ -6,6 +6,7 @@ Reactor::Reactor() {
 }
 
 Reactor& Reactor::get_instance() {
+    //单例模式，确保全局只有一个Reactor实例
     static Reactor instance;
     return instance;
 }

@@ -17,7 +17,7 @@ public:
     void stop();
 
 private:
-    std::unique_ptr<EventDemultiplexer> demux;
-    std::unordered_map<Handle, EventHandler*> handlers;
+    std::unique_ptr<EventDemultiplexer> demux;  // 事件分发器
+    std::unordered_map<Handle, EventHandler*> handlers;  // 句柄到事件处理器的映射
     bool running;
 };

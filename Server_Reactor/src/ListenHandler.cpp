@@ -15,9 +15,16 @@ ListenHandler::~ListenHandler() {
     close(listen_fd);
 }
 
-Handle ListenHandler::get_handle() const { return listen_fd; }
+Handle ListenHandler::get_handle() const { 
+    return listen_fd; 
+}
 
 void ListenHandler::setup(int port) {
+    /*
+        * 设置监听套接字：
+        * - 创建套接字
+        * - 设置套接字选项
+    */
     listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (listen_fd < 0) throw std::runtime_error("socket failed");
 
@@ -36,6 +43,11 @@ void ListenHandler::setup(int port) {
 }
 
 void ListenHandler::handle_read() {
+    /*
+        * 处理读事件：
+        * - 接受新的连接请求
+        * - 为新连接创建套接字处理器
+    */
     int conn_fd = accept(listen_fd, nullptr, nullptr);
     if (conn_fd < 0) return;
 

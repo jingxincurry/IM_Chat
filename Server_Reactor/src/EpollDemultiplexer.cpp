@@ -12,6 +12,11 @@ EpollDemultiplexer::~EpollDemultiplexer() {
 }
 
 bool EpollDemultiplexer::regist(Handle handle, EventHandler* handler, int evt) {
+    /*
+        * 注册或修改事件：
+        * - 如果句柄已存在，则使用 EPOLL_CTL_MOD 修改事件
+        * - 否则，使用 EPOLL_CTL_ADD 添加新事件
+    */
     epoll_event ev{};
     ev.data.fd = handle;
     if (evt & static_cast<int>(Event::READ))  ev.events |= EPOLLIN;
@@ -24,6 +29,10 @@ bool EpollDemultiplexer::regist(Handle handle, EventHandler* handler, int evt) {
 }
 
 bool EpollDemultiplexer::remove(Handle handle) {
+    /*
+        * 删除事件：
+        * - 如果句柄存在，则使用 EPOLL_CTL_DEL 删除事件
+    */
     if (!handlers.count(handle)) return false;
     epoll_ctl(epoll_fd, EPOLL_CTL_DEL, handle, nullptr);
     handlers.erase(handle);
@@ -31,6 +40,10 @@ bool EpollDemultiplexer::remove(Handle handle) {
 }
 
 int EpollDemultiplexer::wait_event(int timeout) {
+    /*
+        * 等待事件：
+        * - 使用 epoll_wait 等待事件发生
+    */
     int n = epoll_wait(epoll_fd, evs.data(), max_event, timeout);
     for (int i = 0; i < n; ++i) {
         Handle fd = evs[i].data.fd;
