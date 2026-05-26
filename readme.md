@@ -68,7 +68,7 @@ IM_Chat/
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/<your-name>/IM_Chat.git
+git clone https://github.com/jingxincurry/IM_Chat.git
 cd IM_Chat
 ```
 
@@ -97,7 +97,7 @@ cmake --build build
 
 如果使用 Qt Creator，也可以直接打开根目录的 `CMakeLists.txt`，选择合适的 Kit 后构建运行。
 
-![image-20260521095011639](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260521095011639.png)
+![image-20260521095011639](./images/image-20260521095011639-1779779458702-1.png)
 
 ## 使用说明
 
@@ -117,7 +117,7 @@ export IM_CHAT_SERVER_PORT=8888
 
 在Client文件下的mainwindow.cpp可以修改服务器地址和端口
 
-![image-20260521095220085](C:\Users\Administrator\AppData\Roaming\Typora\typora-user-images\image-20260521095220085.png)
+![image-20260521095220085](./images/image-20260521095220085-1779779463244-3.png)
 
 ## 协议设计
 
